@@ -1,55 +1,37 @@
-export default class verticeNode {
-    #coords;
-    #neighbors;
+export default class Node {
     constructor(coords) {
-        this.#coords = coords;
-        this.#neighbors = []
-    }
-
-    get coords() {
-        return this.#coords;
-    }
-
-    get neighbors() {
-        return this.#neighbors;
+        this.coords = coords;
+        this.neighbors = [];
     }
 
     get front() {
-        this.#neighbors.find(val => {
-            if (Object.is(val, [this.#coords[0], this.#coords[1] + 1])) return true;
-        });
+        const f = this.neighbors.find(node => String(node.coords) === String([this.coords[0], this.coords[1] + 1]));
+        return f;
     }
 
     get back() {
-    this.#neighbors.find(val => {
-        if (Object.is(val, [this.#coords[0], this.#coords[1] - 1])) return true;
-    });
-}
+        const b = this.neighbors.find(node => String(node.coords) === String([this.coords[0], this.coords[1] - 1]));
+        return b;
+    }
 
     get left() {
-        this.#neighbors.find(val => {
-            if (Object.is(val, [this.#coords[0] - 1, this.#coords[1]])) return true;
-        })
+        const l = this.neighbors.find(node => String(node.coords) === String([this.coords[0] - 1, this.coords[1]]));
+        return l;
     }
 
     get right() {
-        this.#neighbors.find(val => {
-            if (Object.is(val, [this.#coords[0] + 1, this.#coords[1]])) return true;
-        })
+        const r = this.neighbors.find(node => String(node.coords) === String([this.coords[0] + 1, this.coords[1]]));
+        return r;
     }
 
+    connect(node) {
+        if (!(node instanceof Node)) throw new Error("invalid node argument");
+        this.neighbors.push(node);
+    };
 
-    set neighbors(arrNodes) {
-        if (!(arrNodes instanceof verticeNode)) throw new Error("invalid neighbor assignment");
-        this.#neighbors = arrNodes;
-    }
-
-    pushNeighbors(...neighborArr) {
-        if (!(Array.isArray(neighborArr)) || neighborArr.length <= 0) throw new Error("invalid neighbor array argument");
-        neighborArr.map(neighbor => {
-            if (!(verticeNode instanceof neighbor)) throw new Error("invalid neighbor argument");
-            this.#neighbors.push(neighborArr);
-        });
+    disconnect(node) {
+        if (!(node instanceof Node)) throw new Error("invalid node argument");
+        this.neighbors = this.neighbors.filter(val => val !== node);
     }
 
 }

@@ -1,79 +1,93 @@
-import KnightPiece from "./knight-piece-template.js";
-import verticeNode from "./node-template.js";
+import Node from "./node-template.js";
 
-export default class chessBoardGraph {
-    #board;
-    // this will store the coordinates for already created nodes [x, y]
-    #createdSpots;
-    constructor(initialLoc) {
-        if (initialLoc === undefined) initialLoc = [0, 0];
-        if (!(Array.isArray(initialLoc)) || initialLoc.length !== 2) throw new Error("invalid initial position provided");
-        this.#board = #this.chessInitialSpot(initialLoc);
-        this.#pointer = null;
-        this.#createdSpots = new Map();
+export default class ChessBoardGraph {
+    constructor() {
+        this.nodes = new Map();
+        this.chessGraph = this.#initializeNode([0, 0]);
     }
 
-    #findSquare(coordinatesArr) {
-        const [x, y] = coordinatesArr;
-        return this.#createdSpots.get(`${x}${y}`);
+    // return [[], [], []] containg [x, y] coords for every in range index of board;
+    #getValidNeighborCoord(coord) {
+        const coords = [];
+        // front neighbor
+        if (coord[1] !== 0) coords.push([coord[0], coord[1] - 1]);
+        // back neighbor
+        if (coord[1] !== 7) coords.push([coord[0], coord[1] + 1]);
+        // left neighbor
+        if(coord[0] !== 0) coords.push([coord[0] - 1, coord[1]]);
+        // right neighbor
+        if (coord[0] !== 7) coords.push([coord[0] + 1, coord[1]]);
+
+        return coords;
+
+    };
+
+    // check if both [x, y] are between 0-7;
+    #isInRange(coord) {
+        return ((coord[0] >= 0 && coord[0] <= 7) && (coord[1] >= 0 && coord[1] <= 7));
     }
 
-    #getNeighbors(coordinatesArr) {
-        const neighbors3x3 = [];
-        for (let x = -1; x !== 2; x++) {
-            for (let y = -1; y !== 2; y++) {
-                const coordX = coordinatesArr[0] + x;
-                const coordY = coordinatesArr[1] + y;
-                if (this.#validIndex([coordX, coordY])) neighbors3x3.push([coordX, coordY]);
-            }
+    #getValidKnightMov(coord) {
+        const coords = [];
+        const offsets = [
+            [2, 1],
+            [2, -1],
+            [-2, 1],
+            [-2, -1],
+            [1, 2],
+            [1, -2],
+            [-1, 2],
+            [-1, -2]
+        ];
+        // al possible knight moves offSets relative to current position
+        for (const [x, y] of offsets) {
+            if (this.#isInRange([coord[0] + x, coord[1] + y])) coords.push([coord[0] + x, coord[1] + y]);
         }
-        const neighborsRef = neighbors3x3.map(val => {
-            return this.#findSquare(val);
+        return coords;
+    }
+    // initiale node or return if already exist
+    #initializeNode(coord) {
+        if (this.nodes.has(String(coord))) return this.nodes.get(String(coord));
+
+        // create a new node
+        const newNode = new Node(coord);
+        // set node in set
+        this.nodes.set(String(coord), newNode);
+        // get all reasonable neighbor squares from that node
+        const neighborsCoord = this.#getValidNeighborCoord(coord);
+        // recurse to create its neighbors
+        neighborsCoord.map(c => {
+            newNode.connect(this.#initializeNode(c));
         });
-        return neighborsRef;
+        // must return newNode to recursion work, otherwise its neighbors returned from recursion would be undefined
+        return newNode;
     }
 
-    #validIndex(arr) {
-        if (arr.length !== 2) throw new Error("invalid input");
-        // check if both coordinates are in range (0-7)
-        return (arr[0] <= 7 || arr[0] > 0) || (arr[1] <= 7 || arr[1] > 0);
-    }
+    // must make a queue
+    knightMoves(position, destination, queue = [{path: null, square: position}], visited = new Set()) {
+        while (queue.length !== 0) {
+            // it's an object {path, square};
+            const branch = queue.shift();
+            branch.path = branch.path ? [...branch.path, branch.square] : [branch.square];
+            // check conditions
+            if (visited.has(String(branch.square))) continue;
+            if (String(branch.square) === String(destination)) return branch.path;
+            // avoid cycles
+            visited.add(String(branch.square));
 
-    #generateSquare(coordinatesArr) {
-        // check if index is in range
-        if (!this.#validIndex(coordinatesArr)) throw new Error("square index out of range");
-        // get coordinates in variables for more readability
-        const coordinateX = coordinatesArr[0];
-        const coordinateY = coordinatesArr[1];
-        // check if coordinates are integers
-        if (!(Number.isInteger(coordinateX) && Number.isInteger(coordinateY))) throw new Error("coordinates must be integers");
-        // check if spot to be generate is already created, if it is it don't create another one it just return the existing reference
-        let address;
-        if (this.#createdSpots.has(`${coordinateX}${coordinateY}`)) {
-            address = this.#findSquare(coordinatesArr);
-            return address;
+            const nextMoviments = this.#getValidKnightMov(branch.square);
+            nextMoviments.map(val => {
+                queue.push({path: branch.path.slice(), square: val});
+            });
         }
-        // create another node
-        const newSquare = new verticeNode(coordinatesArr);
-        // set the new square and record its address in memory
-        this.#createdSpots.set(`${coordinateX}${coordinateY}`, newSquare);
-        // get all nearby 3x3 neighbors
-        newSquare.neighbors = this.#getNeighbors(coordinatesArr);
-        // for each neighbor add this new square in neighbors
-        newSquare.neighbors.map(neighbor => neighbor.pushNeighbors(newSquare));
-        return newSquare ?? address;
-    }
 
-    knightMoves(position, destination) {
-        const knight = new KnightPiece(position);
-        const actualSquare = this.#generateSquare(position);
-    }
 
-    #getKnightShortRoot(knight, destination) {
-        const logicMovies = knight.hipotheticalMoviments.filter(this.#validIndex);
-    }
 
-    #chessInitialSpot(initialLoc) {
-        return this.#generateSquare(initialLoc);
     }
 }
+
+const chess = new ChessBoardGraph();
+// console.log(chess.nodes.entries());
+// console.log("//");
+// console.log(chess.nodes.get("0,0").left)
+console.log(chess.knightMoves([0,0], [7, 0]));
